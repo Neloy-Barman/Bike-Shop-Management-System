@@ -1,0 +1,100 @@
+
+SET SERVEROUTPUT ON;
+SET VERIFY OFF;
+
+ACCEPT X PROMPT 'Enter Bike_no: ';
+ACCEPT Y PROMPT 'Enter Sold price: ';
+
+CREATE OR REPLACE TRIGGER UPDATED
+AFTER UPDATE
+OF Sell_status 
+ON STATUS
+BEGIN
+	DBMS_OUTPUT.PUT_LINE('Bike Sell Status Updated');
+END;
+/
+
+CREATE OR REPLACE TRIGGER INS_SELL
+AFTER INSERT 
+ON SELL
+BEGIN
+	DBMS_OUTPUT.PUT_LINE('Insertion to sell table done.');
+END;
+/
+
+CREATE OR REPLACE PACKAGE Sold AS
+
+	PROCEDURE Stat_sold(A IN NUMBER);
+	
+	PROCEDURE INS_SELL(A IN INT, S IN NUMBER, C IN NUMBER, SP IN NUMBER);
+	
+END Sold;
+/
+
+CREATE OR REPLACE PACKAGE BODY Sold AS
+
+	PROCEDURE Stat_sold(A IN NUMBER)
+	IS
+	BEGIN
+		FOR R IN (SELECT * FROM STATUS) LOOP
+			IF R.Bike_no = A and R.Sell_status = 'In shop' THEN
+				UPDATE STATUS
+				SET Sell_status = 'Sold'; 
+			ELSIF R.Bike_no = A and R.Sell_status = 'Sold' THEN
+				DBMS_OUTPUT.PUT_LINE('It is sold already. Check id again.');
+			END IF;
+		END LOOP;
+	END Stat_sold;
+	
+	PROCEDURE INS_SELL(A IN INT, S IN NUMBER, C IN NUMBER, SP IN NUMBER)
+	IS 
+	BEGIN
+		INSERT INTO SELL(SELL_NO, BIKE_NO, C_NO, SOLD_PRICE_LAKH) VALUES(S,A,C,SP);
+	END INS_SELL;
+	
+END Sold;
+/
+
+DECLARE
+	A Bike_Details.Bike_no%TYPE;
+	Flag NUMBER;
+	Ex EXCEPTION;
+	S INT;
+	C NUMBER;
+	SP Bike_Details.Price_Lakh%TYPE;
+	
+BEGIN
+	A := &X;
+	Flag := 0;
+	S := 0;
+	SP := &Y;
+	
+	FOR R IN (SELECT BIKE_NO FROM SELL) LOOP
+		S := S + 1;
+	END LOOP;
+	
+	FOR R IN (SELECT Bike_no FROM STATUS) LOOP
+		IF R.Bike_no = A THEN
+			Sold.Stat_sold(A);
+			Sold.INS_SELL(A, 200000+S, 100000+S, SP);
+			Flag := 1;
+		END IF;
+	END LOOP;
+	
+	IF Flag = 0 THEN
+		RAISE EX;
+	END IF;
+	
+	EXCEPTION
+		WHEN EX THEN
+			DBMS_OUTPUT.PUT_LINE('Invalid ID');
+END;
+/
+
+SELECT * FROM SELL;
+
+
+
+
+
+
